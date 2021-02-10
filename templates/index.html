@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+/* This isn't amazing frontend, my priority was reduce calls to the backend and make it as memory and network
+   efficient as possible- i.e do as much of the processing browser side without making it slow. This is done
+   using JavaScript and JQuery to make a dynamic website but who's values are called from the flask backend */
+
+/* First we layout the basic structure of the website: */
+<html>
+    <head>
+        <title>Device Query System</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.2/css/bootstrap-select.min.css" />
+    </head>
+
+    <body>
+        <div class="container">
+            <h1 align="center">Device Query System </h1>       
+            <div class="row">
+                
+		/* We use inline JQuery {} to populate the first dropdown */ 
+		<div class="col-md-6">
+                    <label>Select System Type</label>
+                    <select name="system_type" data-live-search="true" id="system_type" class="form-control" title="Select System Type"> 
+                    {% for row in systems %}
+                    <option value="{{row.id}}">{{row.system_type}}</option>
+                    {% endfor %}
+                    </select>
+		</div>
+
+		/* The key thing to note here is the id's of each dropdown, these are changed dynamically using JS later */
+                <div class="col-md-6">
+                    <label>Select Device</label>
+                    <select name="device" data-live-search="true" id="device" class="form-control" title="Select Device"> </select>
+                </div>
+
+		/* Draw description heading */
+		<div class=col-md-6">
+			<b>Description:</b>
+		</div>
+
+	    	/* Here we repeat the process of the second dropdown, noting the id of the description box */
+		<div id=description_data class=col-md-6>
+		</div>
+            </div>
+        </div>
+
+
+	/* Import our JS and JQuery libraries */  
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.2/js/bootstrap-select.min.js"></script>
+        
+	/* Begin our JS */
+	<script>
+            $(document).ready(function(){
+                
+		/* Get the div id's from earlier and set them as objects that we can return data to */
+		$("#system_type").selectpicker();
+                $("#device").selectpicker();
+		
+		/* Start function to populate first and second elements with one call [efficiency] */
+                function load_data(type, category_id) {
+                    $.ajax({
+                        url: "/system_type",
+                        method: "POST",
+                        data: { type: type, category_id: category_id },
+                        dataType: "json",
+                        success: function (data) { 
+
+			    /* If the POST request is succesful, do the following: */
+                            var html = "";
+                            for (var count = 0; count < data.length; count++) {
+
+				/* Iterate through the returned data array to populate each <option value> in the div's,
+				adding the relevant data to the dropdowns */  
+                                html += '<option value="' + data[count].id + '">' + data[count].name + "</option>";
+			    	}
+
+			    /* Load the returned data as html on the page to each div ID object */
+                            if (type == "deviceData") {
+                                $("#system_type").html(html);
+                                $("#system_type").selectpicker("refresh");
+			    } else {
+                                $("#device").html(html);
+                                $("#device").selectpicker("refresh");
+                            }
+                        },
+                    });
+                }
+		
+		/* Similar function to get the description */
+		function get_description(category_id) {
+                    $.ajax({
+                        url: "/device_description",
+                        method: "POST",
+                        data: {"device_name": category_id},
+                        dataType: "json",
+                        success: function (data) {
+
+				/* Set the correct div to an html rendered version of the data */
+				$("#description_data").html(data);
+			},
+                    });
+                }
+  		
+		/* Call these functions on any change to the page in order to update the values automatically */
+                $(document).on("change", "#system_type", function () {
+                    var category_id = $("#system_type").val();
+                    load_data("devicedata", category_id);
+                });
+
+		$(document).on("change", "#device", function () {
+		    var device_name = $(this).find("option:selected").text();
+	            get_description(device_name);
+                
+		});
+
+	    });
+        </script>
+    </body>
+</html>
